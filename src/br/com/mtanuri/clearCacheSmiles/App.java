@@ -9,6 +9,7 @@ import org.jsoup.nodes.Element;
 public class App {
 
 	private static final Logger LOGGER = Logger.getLogger(App.class.getName());
+	private static int key = 0;
 
 	public static void main(String[] args) {
 
@@ -24,7 +25,7 @@ public class App {
 		}
 
 		final String siteDomain = propertiesUtil.getPropertie("site.domain");
-		final String clearDbCacheUrl = propertiesUtil.getPropertie("site.dbcache.url");
+		final String controlPanelServerUrl = propertiesUtil.getPropertie("site.dbcache.url");
 		final String ipGetterUrl = propertiesUtil.getPropertie("site.ipgetter.url");
 		final String logoutUrl = propertiesUtil.getPropertie("site.logout.url");
 		final String loginURL = propertiesUtil.getPropertie("site.login.url");
@@ -39,7 +40,7 @@ public class App {
 				+ "\nNice to meet you! :)"
 				+ "\n************************************************************************************************");
 
-		LOGGER.info("Executing clearing at " + siteDomain + " ...");
+		LOGGER.info("Executing automation at " + siteDomain + " ...");
 
 		HashMap<String, String> map = new HashMap<String, String>();
 
@@ -70,14 +71,26 @@ public class App {
 						LOGGER.warning("Login failed");
 
 					if (loginSuccess) {
-						LOGGER.info("Clearing DB Cache on " + currentNode + " ...");
-						formData = new HashMap<>();
-						formData.put("_137_cmd", "cacheDb");
 
 						int indexOf = loginAction.getDoc().head().html().indexOf("Liferay.authToken");
 						String p_auth = loginAction.getDoc().head().html().substring(indexOf + 21, indexOf + 29);
 
-						new DoPOST(clearDbCacheUrl.replace("$P_AUTH", p_auth), ipGetterPage.getCookies(), formData);
+						formData = new HashMap<>();
+						switch (key) {
+						case 0:
+							LOGGER.info("Clearing DB Cache on " + currentNode + " ...");
+							formData.put("_137_cmd", "cacheDb");
+							break;
+						case 1:
+							LOGGER.info("Redploying smiles-memberships-portlet on " + currentNode + " ...");
+							formData.put("_137_cmd", "runScript");
+							formData.put("_137_language", "groovy");
+							formData.put("_137_script", "com.liferay.portal.deploy.DeployUtil.redeployTomcat('smiles-account-portlet');");
+							break;
+						default:
+							break;
+						}
+						new DoPOST(controlPanelServerUrl.replace("$P_AUTH", p_auth), ipGetterPage.getCookies(), formData);
 
 						LOGGER.info("Signing out " + currentNode + " ...");
 						new DoGET(logoutUrl, ipGetterPage.getCookies());
